@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SS Operations Control</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',-apple-system,sans-serif; background:#f8fafc; color:#0f172a; min-height:100vh; }
+
+/* Header */
+.header { background:#0f172a; padding:14px 20px; position:sticky; top:0; z-index:100; }
+.header-inner { max-width:1400px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+.header h1 { color:#fff; font-size:18px; font-weight:800; letter-spacing:-0.5px; display:flex; align-items:center; gap:8px; }
+.header .sub { color:#64748b; font-size:11px; }
+.save-badge { font-size:10px; color:#22c55e; background:rgba(34,197,94,.12); padding:2px 8px; border-radius:10px; display:none; }
+.save-badge.show { display:inline; }
+.filters { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.fbtn { padding:5px 12px; border-radius:20px; border:none; cursor:pointer; font-size:11px; font-weight:700; font-family:inherit; background:rgba(255,255,255,.08); color:#94a3b8; transition:all .15s; }
+.fbtn.active { background:#fff; color:#0f172a; }
+.fbtn.add { background:#22c55e; color:#fff; }
+
+/* Summary */
+.summary { background:#fff; border-bottom:1px solid #e2e8f0; padding:10px 20px; }
+.summary-inner { display:flex; gap:24px; max-width:1400px; margin:0 auto; justify-content:center; flex-wrap:wrap; }
+.sbox { text-align:center; min-width:70px; }
+.sbox .num { font-size:26px; font-weight:800; letter-spacing:-1px; }
+.sbox .lbl { font-size:9px; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:.5px; }
+
+/* Main layout */
+.main { max-width:1400px; margin:0 auto; padding:16px 20px; display:grid; grid-template-columns:1fr 320px; gap:16px; }
+.main.detail-open { grid-template-columns:1fr 1fr; }
+.jobs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px; }
+.main.detail-open .jobs-grid { grid-template-columns:1fr; }
+
+/* Job Card */
+.jcard { background:#fff; border:2px solid #22c55e; border-radius:12px; padding:14px; cursor:pointer; position:relative; box-shadow:0 1px 3px rgba(0,0,0,.06); transition:all .15s; }
+.jcard.selected { background:#f1f5f9; border-color:#0f172a; box-shadow:0 0 0 2px rgba(15,23,42,.12); }
+.jcard:hover { box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.jcard-top { display:flex; justify-content:space-between; align-items:start; margin-bottom:8px; }
+.jcard .rig { font-size:15px; font-weight:800; color:#0f172a; }
+.jcard .well-info { font-size:12px; color:#64748b; }
+.jcard .warn { position:absolute; top:8px; right:8px; font-size:16px; }
+.jcard .tags { display:flex; gap:6px; flex-wrap:wrap; font-size:11px; color:#64748b; margin-top:8px; }
+.jcard .tags span { background:#f1f5f9; padding:2px 6px; border-radius:4px; }
+.jcard .rmk { margin-top:6px; font-size:11px; color:#94a3b8; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Badges */
+.badge { display:inline-block; padding:2px 10px; border-radius:20px; color:#fff; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+.stage-pill { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+
+/* Detail Panel */
+.detail { background:#fff; border-radius:16px; border:1px solid #e2e8f0; overflow:hidden; }
+.detail-header { background:#0f172a; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; }
+.detail-header h2 { color:#fff; font-size:20px; font-weight:800; }
+.detail-header .sub { color:#94a3b8; font-size:13px; }
+.close-btn { background:rgba(255,255,255,.1); border:none; color:#fff; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:16px; }
+
+.pipeline { padding:14px 20px; border-bottom:1px solid #e2e8f0; overflow-x:auto; }
+.pipeline-label { font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+.pipeline-stages { display:flex; gap:3px; min-width:600px; }
+.pipe-btn { flex:1; padding:7px 3px; border-radius:8px; border:none; cursor:pointer; font-size:9px; font-weight:700; display:flex; flex-direction:column; align-items:center; gap:2px; transition:all .15s; font-family:inherit; }
+.pipe-btn .ico { font-size:14px; }
+
+.well-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:6px; }
+.well-box { background:#f8fafc; border-radius:8px; padding:6px 10px; }
+.well-box .lbl { font-size:9px; color:#94a3b8; font-weight:600; text-transform:uppercase; }
+.well-box .val { font-size:13px; font-weight:700; color:#0f172a; }
+.chip-row { margin-top:6px; display:flex; gap:4px; flex-wrap:wrap; align-items:center; }
+.chip-row .chip-label { font-size:9px; color:#94a3b8; font-weight:600; }
+.chip { padding:2px 7px; border-radius:12px; font-size:10px; font-weight:600; }
+.chip.probe { background:#e0f2fe; color:#0369a1; }
+.chip.du { background:#fce7f3; color:#be185d; }
+
+.remarks-bar { padding:10px 20px; border-bottom:1px solid #e2e8f0; background:#fffbeb; }
+.remarks-bar .rlabel { font-size:10px; font-weight:700; color:#92400e; text-transform:uppercase; }
+.remarks-bar .edit-btn { font-size:10px; background:none; border:none; color:#3b82f6; cursor:pointer; font-weight:700; font-family:inherit; }
+.remarks-bar .rtext { font-size:12px; color:#78350f; margin-top:2px; }
+.remarks-bar input { width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px; margin-top:4px; outline:none; font-family:inherit; }
+
+.comms { padding:14px 20px; }
+.comms-log { max-height:160px; overflow-y:auto; margin-bottom:8px; }
+.comms-entry { padding:6px 10px; border-radius:6px; margin-bottom:3px; display:flex; justify-content:space-between; font-size:12px; }
+.comms-entry:nth-child(odd) { background:#f8fafc; }
+.comms-entry .time { font-size:9px; color:#94a3b8; white-space:nowrap; margin-left:8px; }
+.comms-input { display:flex; gap:6px; }
+.comms-input input { flex:1; padding:9px 12px; border-radius:8px; border:1px solid #d1d5db; font-size:12px; outline:none; font-family:inherit; }
+.comms-input button { padding:9px 16px; border-radius:8px; border:none; background:#0f172a; color:#fff; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit; }
+
+/* Sidebar */
+.sidebar { display:flex; flex-direction:column; gap:12px; }
+.scard { background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:14px; }
+.scard h3 { font-size:12px; font-weight:800; color:#0f172a; margin-bottom:10px; }
+.alert { padding:7px 10px; border-radius:8px; margin-bottom:3px; font-size:11px; color:#334155; line-height:1.4; border-left:3px solid; }
+.fleet-bar { height:7px; background:#f1f5f9; border-radius:4px; overflow:hidden; display:flex; margin-bottom:8px; }
+
+/* Modal */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:200; }
+.modal { background:#fff; border-radius:16px; padding:24px; width:400px; max-width:90vw; }
+.modal h2 { font-size:18px; font-weight:800; margin-bottom:16px; }
+.modal label { font-size:10px; font-weight:600; color:#64748b; text-transform:uppercase; display:block; margin-bottom:2px; }
+.modal input { width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:13px; outline:none; margin-bottom:8px; font-family:inherit; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+.modal-actions button { padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:700; font-family:inherit; font-size:13px; }
+.modal-actions .cancel { border:1px solid #d1d5db; background:#fff; }
+.modal-actions .submit { border:none; background:#0f172a; color:#fff; }
+
+.empty-note { color:#94a3b8; font-size:12px; font-style:italic; padding:8px; }
+.meet-group { margin-bottom:8px; }
+.meet-label { font-size:10px; font-weight:700; margin-bottom:3px; }
+.meet-item { font-size:11px; color:#334155; padding:2px 0 2px 12px; line-height:1.5; }
+
+@media(max-width:768px) {
+  .main { grid-template-columns:1fr !important; }
+  .jobs-grid { grid-template-columns:1fr !important; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ─── DATA ──────────────────────────────────────────────────
+var INIT_JOBS = [
+  {id:1,rig:"SND-2017",well:"HRDH_5000",account:"Gas Dev",section:"5.875",temp:280,h2s:0,mud:"OBM",pTool:"XPT",sPlat:"MDT",dual:"IPI5-AAA",single:"OPN5",probes:["MRLD-CA","MRLD-CA","MRSD-BA"],du:["MRDU-HP","MRDU-HP","MRDU-XP","MRDU-XP"],mob:"2026-03-28",remarks:"String from ADC-49 / WT ongoing OH TLC",stage:"in-field",bottles:8},
+  {id:2,rig:"ADC-67L",well:"UTMN_2364",account:"Gas Dev",section:"5.875",temp:295,h2s:3,mud:"OBM",pTool:"HXPT",sPlat:"MDT",dual:"IPI5-AAA",single:"OPN5",probes:["MRLD-CA","MRLD-CA","MRSD-BA"],du:["MRDU-HP","MRDU-HP","MRDU-XP","MRDU-XP"],mob:"2026-04-02",remarks:"Inconel String / OH split, ~24h before SS",stage:"in-field",bottles:8},
+  {id:3,rig:"ADC-66L",well:"HWYH_1419",account:"Gas Dev",section:"5.875",temp:305,h2s:4.8,mud:"OBM",pTool:"HXPT",sPlat:"MDT",dual:"IPI5-AAA",single:"OPN5",probes:["MRLD-CA","MRLD-CA","MRSD-BA"],du:["MRDU-HP","MRDU-HP","MRDU-XP","MRDU-XP"],mob:"2026-04-02",remarks:"WT ongoing then OH / SS ~48h",stage:"in-field",bottles:8},
+  {id:4,rig:"NBR-633S",well:"HRDH_2742",account:"Gas Dev",section:"5.875",temp:280,h2s:0,mud:"OBM",pTool:"XPT",sPlat:"MDT",dual:"IPI5-AAA",single:"OPN5",probes:["MRLD-CA","MRLD-CA","MRSD-BA"],du:["MRDU-HP","MRDU-HP","MRDU-XP","MRDU-XP"],mob:"2026-04-04",remarks:"MDT on TLC for PP",stage:"in-field",bottles:8},
+  {id:5,rig:"SP-98",well:"SDGM_1371",account:"Gas Dev",section:"8.375",temp:310,h2s:0,mud:"OBM",pTool:"XPT",sPlat:"MDT",dual:"IPI7-AAA",single:"OPN7-ASA",probes:["MRLD-CA","MRSD-BA","MRSD-BA"],du:["MRDU-HP","MRDU-XP","MRDU-XP","MRDU-XP"],mob:"2026-04-04",remarks:"MDT standby / Today RIH TLC OH",stage:"tool-assignment",bottles:8},
+  {id:6,rig:"ADC-16",well:"HRDH_2488",account:"Gas Dev",section:"8.375",temp:280,h2s:0,mud:"OBM",pTool:"XPT",sPlat:"MDT",dual:"IPI7-AAA",single:"OPN7-BAC",probes:["MRLD-CA","MRLD-CA","MRSD-BA"],du:["MRDU-HP","MRDU-HP","MRDU-XP","MRDU-XP"],mob:"2026-04-07",remarks:"",stage:"tool-prep",bottles:8},
+  {id:7,rig:"SND-2018",well:"HRDH_267",account:"Gas Dev",section:"8.375",temp:300,h2s:0,mud:"OBM",pTool:"MDT",sPlat:"MDT",dual:"IPI7-AAA",single:"OPN7-BAC",probes:["MRLD-BA","MRLD-CA","MRSD-BA"],du:["MRDU-HP","MRDU-XP","MRDU-XP","MRDU-XP"],mob:"2026-04-07",remarks:"",stage:"tool-assignment",bottles:8},
+  {id:8,rig:"SND-2023",well:"HRDH_2648",account:"Gas Dev",section:"8.375",temp:290,h2s:0,mud:"OBM",pTool:"XPT",sPlat:"MDT",dual:"IPI7-AAA",single:"OPN7-BAC",probes:["MRLD-CA","MRLD-CA","MRSD-BA"],du:["MRDU-HP","MRDU-HP","MRDU-XP","MRDU-XP"],mob:"2026-04-07",remarks:"",stage:"tool-assignment",bottles:8},
+  {id:9,rig:"SND-2006",well:"HRDH_2722",account:"Gas Dev",section:"5.875",temp:290,h2s:0,mud:"OBM",pTool:"XPT",sPlat:"MDT",dual:"IPI5-AAA",single:"OPN5",probes:["MRSD-BA","MRSD-BA","MRSD-BA"],du:["MRDU-XP","MRDU-XP","MRDU-XP","MRDU-XP"],mob:"2026-04-08",remarks:"",stage:"pre-job-notes",bottles:8},
+  {id:10,rig:"ADC-41L",well:"SDGM_1297",account:"Gas Dev",section:"8.375",temp:310,h2s:0,mud:"OBM",pTool:"HXPT",sPlat:"MDT",dual:"IPI7-AAA",single:"OPN7-BAC",probes:["MRLD-CA","MRSD-BA","MRSD-BA"],du:["MRDU-HP","MRDU-XP","MRDU-XP","MRDU-XP"],mob:"2026-04-08",remarks:"",stage:"pre-job-notes",bottles:8},
+  {id:11,rig:"ADC-47",well:"HRDH_2768",account:"Gas Dev",section:"5.875",temp:280,h2s:0,mud:"OBM",pTool:"XPT",sPlat:"MDT",dual:"IPI5-AAA",single:"OPN5",probes:["MRLD-CA","MRSD-BA","MRSD-BA"],du:["MRDU-HP","MRDU-XP","MRDU-XP","MRDU-XP"],mob:"2026-04-08",remarks:"",stage:"pre-job-notes",bottles:8},
+  {id:12,rig:"ADC-56L",well:"HRDH_2681",account:"Gas Dev",section:"5.875",temp:290,h2s:0,mud:"OBM",pTool:"",sPlat:"MDT",dual:"",single:"",probes:[],du:[],mob:"2026-04-08",remarks:"",stage:"pre-job-notes",bottles:0},
+  {id:13,rig:"ADES-144",well:"HWYH_1295",account:"Southern",section:"16",temp:220,h2s:0,mud:"WBM",pTool:"XPT",sPlat:"MDT",dual:"",single:"",probes:["MRLD-BA","MRLD-CA","MRSD-BA"],du:["MRDU-ST","MRDU-ST","MRDU-HP","MRDU-HP"],mob:"2026-04-10",remarks:"",stage:"pre-job-notes",bottles:12},
+  {id:14,rig:"SINO-49",well:"HRDH_2718",account:"Gas Dev",section:"8.375",temp:0,h2s:0,mud:"",pTool:"",sPlat:"",dual:"",single:"",probes:[],du:[],mob:"2026-04-10",remarks:"",stage:"pre-job-notes",bottles:0},
+  {id:15,rig:"SP-98",well:"SDGM_1371",account:"Gas Dev",section:"5.875",temp:310,h2s:0,mud:"OBM",pTool:"XPT",sPlat:"MDT",dual:"",single:"",probes:[],du:[],mob:"2026-04-10",remarks:"",stage:"pre-job-notes",bottles:8},
+  {id:16,rig:"NA-393S",well:"HRDH_981",account:"Gas Dev",section:"5.875",temp:0,h2s:0,mud:"",pTool:"XPT",sPlat:"MDT",dual:"",single:"",probes:[],du:[],mob:"2026-04-10",remarks:"",stage:"pre-job-notes",bottles:8}
+];
+
+var STAGES = [
+  {key:"pre-job-notes",label:"Pre-Job",icon:"\u{1F4CB}",color:"#64748b"},
+  {key:"tracker-updated",label:"Tracker",icon:"\u{1F4CA}",color:"#8b5cf6"},
+  {key:"tool-assignment",label:"ER Assign",icon:"\u{1F527}",color:"#3b82f6"},
+  {key:"tool-prep",label:"TLM Prep",icon:"\u2699\uFE0F",color:"#f59e0b"},
+  {key:"ost-check",label:"OST",icon:"\u2705",color:"#10b981"},
+  {key:"mobilization",label:"Mob",icon:"\u{1F69B}",color:"#6366f1"},
+  {key:"in-field",label:"In Field",icon:"\u{1F6E2}\uFE0F",color:"#ef4444"},
+  {key:"demobilization",label:"Demob",icon:"\u{1F519}",color:"#78716c"}
+];
+
+var FLEET = [
+  {name:"MRDU-XP",op:9,total:20,svc:9,down:2},
+  {name:"MRDU-HP",op:11,total:21,svc:8,down:2},
+  {name:"MRDU-ST",op:22,total:42,svc:20,down:0}
+];
+
+// ─── STATE ─────────────────────────────────────────────────
+var state = { jobs:[], notes:[], selId:null, filter:"all", showAdd:false };
+
+function loadState() {
+  try {
+    var raw = localStorage.getItem("ss-ops-v4");
+    if (raw) {
+      var d = JSON.parse(raw);
+      state.jobs = d.jobs || INIT_JOBS;
+      state.notes = d.notes || [];
+      return;
+    }
+  } catch(e) {}
+  state.jobs = JSON.parse(JSON.stringify(INIT_JOBS));
+  state.notes = [];
+}
+
+function saveState() {
+  try {
+    localStorage.setItem("ss-ops-v4", JSON.stringify({jobs:state.jobs, notes:state.notes, ts:new Date().toISOString()}));
+    var badge = document.getElementById("save-badge");
+    if (badge) { badge.classList.add("show"); setTimeout(function(){ badge.classList.remove("show"); }, 1500); }
+  } catch(e) {}
+}
+
+// ─── HELPERS ───────────────────────────────────────────────
+function daysUntil(mob) {
+  var now = new Date(); now.setHours(0,0,0,0);
+  var t = new Date(mob); t.setHours(0,0,0,0);
+  return Math.ceil((t - now) / 86400000);
+}
+
+function getColor(j) {
+  if (j.stage === "in-field") return "#ef4444";
+  var d = daysUntil(j.mob);
+  if (d < 0) return "#dc2626";
+  if (d <= 2) return "#f97316";
+  if (d <= 5) return "#eab308";
+  return "#22c55e";
+}
+
+function getDaysLabel(j) {
+  if (j.stage === "in-field") return "IN FIELD";
+  var d = daysUntil(j.mob);
+  if (d < 0) return Math.abs(d) + "d OVER";
+  if (d === 0) return "TODAY";
+  return d + "d";
+}
+
+function needsAttn(j) { return !j.pTool || j.du.length === 0; }
+
+function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function stageInfo(key) { for (var i=0;i<STAGES.length;i++) if(STAGES[i].key===key) return STAGES[i]; return null; }
+function stageIdx(key) { for (var i=0;i<STAGES.length;i++) if(STAGES[i].key===key) return i; return -1; }
+
+// ─── RENDER ────────────────────────────────────────────────
+function render() {
+  var prepKeys = ["tool-assignment","tool-prep","ost-check","mobilization"];
+  var upKeys = ["pre-job-notes","tracker-updated"];
+
+  var filtered = state.jobs;
+  if (state.filter === "active") filtered = state.jobs.filter(function(j){ return j.stage==="in-field"; });
+  if (state.filter === "prep") filtered = state.jobs.filter(function(j){ return prepKeys.indexOf(j.stage)>=0; });
+  if (state.filter === "upcoming") filtered = state.jobs.filter(function(j){ return upKeys.indexOf(j.stage)>=0; });
+  if (state.filter === "attn") filtered = state.jobs.filter(function(j){ return needsAttn(j)||(daysUntil(j.mob)<=3&&j.stage!=="in-field"); });
+
+  var sorted = filtered.slice().sort(function(a,b){
+    if(a.stage==="in-field"&&b.stage!=="in-field") return -1;
+    if(b.stage==="in-field"&&a.stage!=="in-field") return 1;
+    return new Date(a.mob)-new Date(b.mob);
+  });
+
+  var ctF = state.jobs.filter(function(j){return j.stage==="in-field"}).length;
+  var ctP = state.jobs.filter(function(j){return prepKeys.indexOf(j.stage)>=0}).length;
+  var ctU = state.jobs.filter(function(j){return upKeys.indexOf(j.stage)>=0}).length;
+  var ctA = state.jobs.filter(function(j){return needsAttn(j)||(daysUntil(j.mob)<=3&&j.stage!=="in-field")}).length;
+
+  var selJob = null;
+  if (state.selId) { for(var i=0;i<state.jobs.length;i++) if(state.jobs[i].id===state.selId) selJob=state.jobs[i]; }
+
+  var today = new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  var html = '';
+
+  // Header
+  html += '<div class="header"><div class="header-inner"><div>';
+  html += '<h1>SS Operations Control <span id="save-badge" class="save-badge">\u2713 Saved</span></h1>';
+  html += '<div class="sub">Wireline Special Services \u00B7 '+esc(today)+'</div></div>';
+  html += '<div class="filters">';
+  var filters = [{k:"all",l:"All ("+state.jobs.length+")"},{k:"active",l:"Active ("+ctF+")"},{k:"prep",l:"Prep ("+ctP+")"},{k:"upcoming",l:"Soon ("+ctU+")"},{k:"attn",l:"\u26A0\uFE0F ("+ctA+")"}];
+  for(var i=0;i<filters.length;i++){
+    html+='<button class="fbtn'+(state.filter===filters[i].k?' active':'')+'" onclick="setFilter(\''+filters[i].k+'\')">'+filters[i].l+'</button>';
+  }
+  html += '<button class="fbtn add" onclick="showAddModal()">+ Add Job</button>';
+  html += '</div></div></div>';
+
+  // Summary
+  html += '<div class="summary"><div class="summary-inner">';
+  var sums = [{l:"In Field",n:ctF,c:"#ef4444"},{l:"Preparing",n:ctP,c:"#f59e0b"},{l:"Upcoming",n:ctU,c:"#64748b"},{l:"Attention",n:ctA,c:"#f97316"},{l:"Total",n:state.jobs.length,c:"#0f172a"}];
+  for(var i=0;i<sums.length;i++) html+='<div class="sbox"><div class="num" style="color:'+sums[i].c+'">'+sums[i].n+'</div><div class="lbl">'+sums[i].l+'</div></div>';
+  html += '</div></div>';
+
+  // Main
+  html += '<div class="main'+(selJob?' detail-open':'')+'">';
+
+  // Jobs grid
+  html += '<div><div class="jobs-grid">';
+  for(var i=0;i<sorted.length;i++){
+    var j = sorted[i];
+    var col = getColor(j);
+    var dl = getDaysLabel(j);
+    var si = stageInfo(j.stage);
+    var isSel = j.id === state.selId;
+    html += '<div class="jcard'+(isSel?' selected':'')+'" style="border-color:'+(isSel?'#0f172a':col)+'" onclick="selectJob('+j.id+')">';
+    if(needsAttn(j)) html+='<span class="warn">\u26A0\uFE0F</span>';
+    html += '<div class="jcard-top"><div><div class="rig">'+esc(j.rig)+'</div><div class="well-info">'+esc(j.well)+' \u00B7 '+esc(j.section)+'"</div></div>';
+    html += '<span class="badge" style="background:'+col+'">'+dl+'</span></div>';
+    if(si) html+='<span class="stage-pill" style="background:'+si.color+'18;color:'+si.color+';border:1px solid '+si.color+'40">'+si.icon+' '+si.label+'</span>';
+    html += '<div class="tags">';
+    if(j.pTool) html+='<span>P:'+esc(j.pTool)+'</span>';
+    if(j.sPlat) html+='<span>S:'+esc(j.sPlat)+'</span>';
+    html+='<span>'+esc(j.account)+'</span></div>';
+    if(j.remarks) html+='<div class="rmk">'+esc(j.remarks)+'</div>';
+    html += '</div>';
+  }
+  html += '</div></div>';
+  // Right panel
+  html += '<div>';
+  if (selJob) {
+    html += renderDetail(selJob);
+  } else {
+    html += renderSidebar();
+  }
+  html += '</div></div>';
+
+  // Modal
+  if (state.showAdd) html += renderModal();
+
+  document.getElementById("app").innerHTML = html;
+}
+
+function renderDetail(j) {
+  var h = '<div class="detail">';
+  h += '<div class="detail-header"><div><h2>'+esc(j.rig)+' \u2014 '+esc(j.well)+'</h2><div class="sub">'+esc(j.account)+' \u00B7 '+esc(j.section)+'" \u00B7 Mob: '+esc(j.mob)+'</div></div>';
+  h += '<button class="close-btn" onclick="selectJob(null)">\u2715</button></div>';
+
+  // Pipeline
+  h += '<div class="pipeline"><div class="pipeline-label">Pipeline \u2014 click to update</div><div class="pipeline-stages">';
+  var si = stageIdx(j.stage);
+  for(var i=0;i<STAGES.length;i++){
+    var s=STAGES[i], isA=s.key===j.stage, isP=i<si;
+    var bg = isA ? s.color : isP ? s.color+"20" : "#f1f5f9";
+    var cl = isA ? "#fff" : isP ? s.color : "#94a3b8";
+    h+='<button class="pipe-btn" style="background:'+bg+';color:'+cl+'" onclick="setStage('+j.id+',\''+s.key+'\')"><span class="ico">'+s.icon+'</span>'+s.label+'</button>';
+  }
+  h += '</div></div>';
+
+  // Well info
+  h += '<div style="padding:14px 20px;border-bottom:1px solid #e2e8f0"><div class="pipeline-label">Well & Toolstring</div><div class="well-grid">';
+  var fields = [["Temp",j.temp+"\u00B0F"],["H2S",j.h2s+"%"],["Mud",j.mud||"\u2014"],["Bottles",j.bottles],["P-Tool",j.pTool||"\u2014"],["S-Plat",j.sPlat||"\u2014"],["Dual",j.dual||"\u2014"],["Single",j.single||"\u2014"]];
+  for(var i=0;i<fields.length;i++) h+='<div class="well-box"><div class="lbl">'+fields[i][0]+'</div><div class="val">'+esc(""+fields[i][1])+'</div></div>';
+  h += '</div>';
+  if(j.probes.length){h+='<div class="chip-row"><span class="chip-label">PROBES:</span>';for(var i=0;i<j.probes.length;i++)h+='<span class="chip probe">'+esc(j.probes[i])+'</span>';h+='</div>';}
+  if(j.du.length){h+='<div class="chip-row"><span class="chip-label">DU:</span>';for(var i=0;i<j.du.length;i++)h+='<span class="chip du">'+esc(j.du[i])+'</span>';h+='</div>';}
+  h += '</div>';
+
+  // Remarks
+  h += '<div class="remarks-bar"><div style="display:flex;justify-content:space-between;align-items:center"><span class="rlabel">Remarks</span>';
+  h += '<button class="edit-btn" onclick="toggleEditRemarks('+j.id+')">Edit</button></div>';
+  h += '<div id="remarks-display" class="rtext" style="font-style:'+(j.remarks?'normal':'italic')+'">'+esc(j.remarks||"No remarks")+'</div>';
+  h += '<div id="remarks-edit" style="display:none"><input id="remarks-input" value="'+esc(j.remarks)+'" onkeydown="if(event.key===\'Enter\')saveRemarks('+j.id+')"><button class="edit-btn" onclick="saveRemarks('+j.id+')" style="margin-top:4px">Save</button></div>';
+  h += '</div>';
+
+  // Comms
+  var jNotes = state.notes.filter(function(n){return n.jobId===j.id});
+  h += '<div class="comms"><div class="pipeline-label">Comms Log</div><div class="comms-log">';
+  if(!jNotes.length) h+='<div class="empty-note">No notes yet. Paste WhatsApp updates or reminders.</div>';
+  for(var i=0;i<jNotes.length;i++) h+='<div class="comms-entry"><span>'+esc(jNotes[i].text)+'</span><span class="time">'+esc(jNotes[i].time)+'</span></div>';
+  h += '</div><div class="comms-input"><input id="note-input" placeholder="Add note or WhatsApp update..." onkeydown="if(event.key===\'Enter\')addNote('+j.id+')">';
+  h += '<button onclick="addNote('+j.id+')">Add</button></div></div>';
+
+  h += '</div>';
+  return h;
+}
+
+function renderSidebar() {
+  var h = '<div class="sidebar">';
+
+  // Alerts
+  h += '<div class="scard"><h3>Action Items</h3>';
+  var alerts = [];
+  state.jobs.forEach(function(j){
+    var d=daysUntil(j.mob);
+    if(!j.pTool&&d<=7&&j.stage!=="in-field") alerts.push({c:"#ef4444",m:j.rig+": No P-tool, mob "+d+"d"});
+    if(j.du.length===0&&d<=7&&j.stage!=="in-field") alerts.push({c:"#ef4444",m:j.rig+": No DU assigned, mob "+d+"d"});
+    if(j.stage==="pre-job-notes"&&d<=4) alerts.push({c:"#f59e0b",m:j.rig+": Still pre-job notes, mob "+d+"d \u2014 push ER"});
+    if(j.stage==="tool-assignment"&&d<=3) alerts.push({c:"#f59e0b",m:j.rig+": Not prepped yet, mob "+d+"d \u2014 follow TLM"});
+    if(j.stage==="in-field"&&j.remarks) alerts.push({c:"#3b82f6",m:j.rig+": "+j.remarks});
+  });
+  var dn=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()];
+  if(dn==="Sunday"||dn==="Tuesday"||dn==="Thursday") alerts.unshift({c:"#8b5cf6",m:"Weekly meeting today ("+dn+") @ 09:30"});
+  for(var i=0;i<alerts.length;i++) h+='<div class="alert" style="background:'+alerts[i].c+'08;border-color:'+alerts[i].c+'">'+esc(alerts[i].m)+'</div>';
+  if(!alerts.length) h+='<div class="empty-note">All clear \u2014 no urgent items</div>';
+  h += '</div>';
+
+  // Meeting prep
+  var inF=state.jobs.filter(function(j){return j.stage==="in-field"});
+  var prep=state.jobs.filter(function(j){return["tool-assignment","tool-prep","ost-check","mobilization"].indexOf(j.stage)>=0});
+  var up=state.jobs.filter(function(j){return["pre-job-notes","tracker-updated"].indexOf(j.stage)>=0});
+  h+='<div class="scard"><h3>Meeting Prep</h3><div style="font-size:10px;color:#94a3b8;margin-bottom:10px;margin-top:-6px">Sun / Tue / Thu @ 09:30</div>';
+  var groups=[{l:"In Field",items:inF,c:"#ef4444"},{l:"Preparing",items:prep,c:"#f59e0b"},{l:"Upcoming",items:up,c:"#64748b"}];
+  for(var g=0;g<groups.length;g++){
+    h+='<div class="meet-group"><div class="meet-label" style="color:'+groups[g].c+'">'+groups[g].l+' ('+groups[g].items.length+')</div>';
+    for(var i=0;i<groups[g].items.length;i++){var j=groups[g].items[i];h+='<div class="meet-item"><strong>'+esc(j.rig)+'</strong> \u2014 '+esc(j.well)+' \u00B7 '+esc(j.section)+'" \u00B7 Mob '+esc(j.mob.slice(5))+'</div>';}
+    if(!groups[g].items.length)h+='<div class="meet-item" style="color:#d1d5db;font-style:italic">None</div>';
+    h+='</div>';
+  }
+  h+='</div>';
+
+  // Fleet
+  h+='<div class="scard"><h3>MRDU Fleet</h3>';
+  for(var i=0;i<FLEET.length;i++){var f=FLEET[i];
+    h+='<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:10px;font-weight:600;color:#64748b;margin-bottom:3px"><span>'+f.name+'</span><span>'+f.op+'/'+f.total+' ready</span></div>';
+    h+='<div class="fleet-bar"><div style="width:'+(f.op/f.total*100)+'%;background:#22c55e"></div><div style="width:'+(f.svc/f.total*100)+'%;background:#f59e0b"></div><div style="width:'+(f.down/f.total*100)+'%;background:#ef4444"></div></div></div>';
+  }
+  h+='<div style="display:flex;gap:10px;font-size:9px;color:#94a3b8"><span><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:#22c55e;margin-right:3px"></span>Op</span><span><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:#f59e0b;margin-right:3px"></span>Svc</span><span><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:#ef4444;margin-right:3px"></span>Down</span></div>';
+  h+='</div>';
+
+  h += '</div>';
+  return h;
+}
+
+function renderModal() {
+  return '<div class="modal-bg" onclick="hideAddModal()"><div class="modal" onclick="event.stopPropagation()">'+
+    '<h2>Add New Job</h2>'+
+    '<label>Rig</label><input id="add-rig">'+
+    '<label>Well</label><input id="add-well">'+
+    '<label>Account</label><input id="add-account" value="Gas Dev">'+
+    '<label>Section</label><input id="add-section" value="5.875">'+
+    '<label>Mob Date</label><input id="add-mob" type="date">'+
+    '<label>Pressure Tool</label><input id="add-ptool">'+
+    '<label>Sampling Platform</label><input id="add-splat" value="MDT">'+
+    '<label>Remarks</label><input id="add-remarks">'+
+    '<div class="modal-actions"><button class="cancel" onclick="hideAddModal()">Cancel</button><button class="submit" onclick="submitAddJob()">Add Job</button></div>'+
+    '</div></div>';
+}
+
+// ─── ACTIONS ───────────────────────────────────────────────
+function setFilter(f) { state.filter = f; render(); }
+function selectJob(id) { state.selId = (state.selId === id) ? null : id; render(); }
+
+function setStage(jobId, stage) {
+  for(var i=0;i<state.jobs.length;i++) if(state.jobs[i].id===jobId) state.jobs[i].stage=stage;
+  saveState(); render();
+}
+
+function addNote(jobId) {
+  var input = document.getElementById("note-input");
+  if (!input || !input.value.trim()) return;
+  var now = new Date();
+  var time = now.toLocaleDateString("en-GB",{day:"2-digit",month:"short"})+" "+now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  state.notes.push({jobId:jobId, text:input.value.trim(), time:time});
+  saveState(); render();
+}
+
+function toggleEditRemarks(jobId) {
+  var disp = document.getElementById("remarks-display");
+  var edit = document.getElementById("remarks-edit");
+  if (disp && edit) {
+    disp.style.display = disp.style.display === "none" ? "block" : "none";
+    edit.style.display = edit.style.display === "none" ? "block" : "none";
+    if (edit.style.display !== "none") document.getElementById("remarks-input").focus();
+  }
+}
+
+function saveRemarks(jobId) {
+  var input = document.getElementById("remarks-input");
+  if (!input) return;
+  for(var i=0;i<state.jobs.length;i++) if(state.jobs[i].id===jobId) state.jobs[i].remarks=input.value;
+  saveState(); render();
+}
+
+function showAddModal() { state.showAdd = true; render(); }
+function hideAddModal() { state.showAdd = false; render(); }
+
+function submitAddJob() {
+  var rig = document.getElementById("add-rig").value.trim();
+  var well = document.getElementById("add-well").value.trim();
+  var mob = document.getElementById("add-mob").value;
+  if (!rig || !well || !mob) return;
+  var maxId = 0;
+  for(var i=0;i<state.jobs.length;i++) if(state.jobs[i].id>maxId) maxId=state.jobs[i].id;
+  state.jobs.push({
+    id:maxId+1, rig:rig, well:well,
+    account:document.getElementById("add-account").value.trim()||"Gas Dev",
+    section:document.getElementById("add-section").value.trim()||"5.875",
+    mob:mob, pTool:document.getElementById("add-ptool").value.trim(),
+    sPlat:document.getElementById("add-splat").value.trim()||"MDT",
+    remarks:document.getElementById("add-remarks").value.trim(),
+    temp:0, h2s:0, mud:"", dual:"", single:"", probes:[], du:[],
+    stage:"pre-job-notes", bottles:0
+  });
+  state.showAdd = false;
+  saveState(); render();
+}
+
+// ─── INIT ──────────────────────────────────────────────────
+loadState();
+render();
+</script>
+</body>
+</html>
